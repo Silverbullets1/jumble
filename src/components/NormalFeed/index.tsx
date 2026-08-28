@@ -3,13 +3,19 @@ import NoteList, { TNoteListRef } from '@/components/NoteList'
 import Tabs from '@/components/Tabs'
 import TrustScoreFilter from '@/components/TrustScoreFilter'
 import UserAggregationList, { TUserAggregationListRef } from '@/components/UserAggregationList'
+import { Button } from '@/components/ui/button'
 import { SPECIAL_FEED_ID } from '@/constants'
 import { prefersTouchInteraction } from '@/lib/device'
+import { useFollowList } from '@/providers/FollowListProvider'
 import { useKindFilter } from '@/providers/KindFilterProvider'
 import { useUserPreferences } from '@/providers/UserPreferencesProvider'
 import { useUserTrust } from '@/providers/UserTrustProvider'
+import storage from '@/services/local-storage.service'
 import { TFeedSubRequest, TFeedTabConfig } from '@/types'
+import { EyeOff, Eye } from 'lucide-react'
+import { Event as NostrEvent } from 'nostr-tools'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import KindFilter from '../KindFilter'
 import { RefreshButton } from '../RefreshButton'
 
@@ -33,6 +39,8 @@ export default function NormalFeed({
   const { getShowKinds } = useKindFilter()
   const { getMinTrustScore } = useUserTrust()
   const { feedTabs } = useUserPreferences()
+  const { followingSet } = useFollowList()
+  const { t } = useTranslation()
   const feedShowKinds = useMemo(() => getShowKinds(feedId), [getShowKinds, feedId])
   const [temporaryShowKinds, setTemporaryShowKinds] = useState(feedShowKinds)
 
@@ -90,6 +98,31 @@ export default function NormalFeed({
     setTrustFilterOpen(open)
   }
 
+  // Hide-following filter: per-feed option to exclude posts from people I follow
+  const [hideFollowing, setHideFollowing] = useState(() =>
+    storage.getHideFollowingMap()[feedId] ?? false
+  )
+
+  useEffect(() => {
+    setHideFollowing(storage.getHideFollowingMap()[feedId] ?? false)
+  }, [feedId])
+
+  const toggleHideFollowing = () => {
+    const next = !hideFollowing
+    setHideFollowing(next)
+    storage.setHideFollowingForFeed(feedId, next)
+  }
+
+  const hideFollowingFilter = useMemo(() => {
+    if (!hideFollowing || followingSet.size === 0) {
+      return undefined
+    }
+    return (event: NostrEvent) => {
+      if (!event.pubkey) return true
+      return !followingSet.has(event.pubkey)
+    }
+  }, [hideFollowing, followingSet])
+
   return (
     <>
       <Tabs
@@ -116,6 +149,17 @@ export default function NormalFeed({
             )}
             {showTrustScoreFilter && (
               <TrustScoreFilter filterId={feedId} onOpenChange={handleTrustFilterOpenChange} />
+            )}
+            {showTrustScoreFilter && (
+              <Button
+                variant="ghost"
+                size="titlebar-icon"
+                className={hideFollowing ? 'text-primary hover:text-primary-hover' : 'text-muted-foreground hover:text-foreground'}
+                onClick={toggleHideFollowing}
+                title={hideFollowing ? t('Showing posts from people I follow') : t('Hide posts from people I follow')}
+              >
+                {hideFollowing ? <EyeOff size={16} /> : <Eye size={16} />}
+              </Button>
             )}
             {!subRequestsHaveKinds && !tabHasFixedKinds && (
               <KindFilter
@@ -150,6 +194,7 @@ export default function NormalFeed({
             showRelayCloseReason={showRelayCloseReason}
             isPubkeyFeed={isPubkeyFeed}
             trustScoreThreshold={trustScoreThreshold}
+            filterFn={hideFollowingFilter}
           />
         )
       ) : null}

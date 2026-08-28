@@ -1318,6 +1318,28 @@ class LocalStorageService {
     window.localStorage.setItem(StorageKey.MIN_TRUST_SCORE_MAP, JSON.stringify(map))
   }
 
+  getHideFollowingMap(): Record<string, boolean> {
+    const str = window.localStorage.getItem(StorageKey.HIDE_FOLLOWING_MAP)
+    if (str) {
+      try {
+        return JSON.parse(str)
+      } catch {
+        // fall through to empty map on malformed data
+      }
+    }
+    return {}
+  }
+
+  setHideFollowingForFeed(feedId: string, hide: boolean) {
+    const map = this.getHideFollowingMap()
+    if (hide) {
+      map[feedId] = true
+    } else {
+      delete map[feedId]
+    }
+    window.localStorage.setItem(StorageKey.HIDE_FOLLOWING_MAP, JSON.stringify(map))
+  }
+
   getDefaultRelayUrls() {
     return this.defaultRelayUrls
   }
