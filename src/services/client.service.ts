@@ -1176,6 +1176,47 @@ class ClientService extends EventTarget {
     return profiles.filter((profile) => !!profile) as TProfile[]
   }
 
+  /** =========== Lists (NIP-51 kind 30000 follow sets) =========== */
+
+  /**
+   * Search the current account's kind-30000 lists by name.
+   * Lists are replaceable events (author = current account) with `p` tag members.
+   * Used by mention autocomplete (bounty: "mention a list expands to all profiles").
+   */
+  async searchListsFromLocal(query: string, limit: number = 10) {
+    const account = storage.getCurrentAccount()
+    if (!account) return []
+
+    const events = await this.query(getDefaultRelayUrls(), {
+      kinds: [kinds.Followsets],
+      authors: [account.pubkey],
+      limit: 50
+    })
+
+    const lists = events
+      .map((event) => {
+        const dTag = event.tags.find(([k]) => k === 'd')?.[1] ?? ''
+        const title = event.tags.find(([k]) => k === 'title')?.[1] ?? ''
+        let name = title || dTag
+        try {
+          const content = JSON.parse(event.content)
+          if (content.name) name = content.name
+        } catch {
+          // content is not JSON — fall back to d-tag/title
+        }
+        return {
+          dTag,
+          name: name || dTag || 'Untitled list',
+          members: getPubkeysFromPTags(event.tags)
+        }
+      })
+      .filter((list) => list.name.toLowerCase().includes(query.trim().toLowerCase()))
+      .sort((a, b) => b.members.length - a.members.length)
+      .slice(0, limit)
+
+    return lists
+  }
+
   private async addUsernameToIndex(profileEvent: NEvent) {
     try {
       const profileObj = JSON.parse(profileEvent.content)
