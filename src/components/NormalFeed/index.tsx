@@ -123,6 +123,33 @@ export default function NormalFeed({
     }
   }, [hideFollowing, followingSet])
 
+  // #15: When the window becomes visible again (e.g. laptop lid opened after
+  // hours), automatically reload new notes instead of requiring a manual
+  // refresh. Relay reconnection is handled by the relay pool lifecycle, but
+  // the feed itself needs to re-request events so new notes show up.
+  const lastVisibleRef = useRef<number>(Date.now())
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        const now = Date.now()
+        // Only auto-refresh when the page was hidden for a meaningful amount
+        // of time (>= 5s) to avoid spamming requests on quick tab switches.
+        if (now - lastVisibleRef.current >= 5000) {
+          if (is24hMode) {
+            userAggregationListRef.current?.refresh()
+          } else {
+            noteListRef.current?.refresh()
+          }
+        }
+        lastVisibleRef.current = now
+      } else {
+        lastVisibleRef.current = Date.now()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [is24hMode])
+
   return (
     <>
       <Tabs
