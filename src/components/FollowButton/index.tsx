@@ -12,17 +12,22 @@ import {
 import { Button } from '@/components/ui/button'
 import { useFollowList } from '@/providers/FollowListProvider'
 import { useNostr } from '@/providers/NostrProvider'
-import { Loader } from 'lucide-react'
+import { EyeOff, Loader } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 export default function FollowButton({ pubkey }: { pubkey: string }) {
   const { t } = useTranslation()
   const { pubkey: accountPubkey, checkLogin } = useNostr()
-  const { followingSet, follow, unfollow } = useFollowList()
+  const { followingSet, privateFollowingSet, follow, unfollow, followPrivate, unfollowPrivate } =
+    useFollowList()
   const [updating, setUpdating] = useState(false)
   const [hover, setHover] = useState(false)
   const isFollowing = useMemo(() => followingSet.has(pubkey), [followingSet, pubkey])
+  const isPrivateFollowing = useMemo(
+    () => privateFollowingSet.has(pubkey),
+    [privateFollowingSet, pubkey]
+  )
 
   if (!accountPubkey || (pubkey && pubkey === accountPubkey)) return null
 
@@ -37,13 +42,28 @@ export default function FollowButton({ pubkey }: { pubkey: string }) {
     })
   }
 
+  const handleFollowPrivate = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    checkLogin(async () => {
+      if (isFollowing) return
+
+      setUpdating(true)
+      await followPrivate(pubkey)
+      setUpdating(false)
+    })
+  }
+
   const handleUnfollow = async (e: React.MouseEvent) => {
     e.stopPropagation()
     checkLogin(async () => {
       if (!isFollowing) return
 
       setUpdating(true)
-      await unfollow(pubkey)
+      if (isPrivateFollowing) {
+        unfollowPrivate(pubkey)
+      } else {
+        await unfollow(pubkey)
+      }
       setUpdating(false)
     })
   }
@@ -63,6 +83,8 @@ export default function FollowButton({ pubkey }: { pubkey: string }) {
               <Loader className="animate-spin" />
             ) : hover ? (
               t('Unfollow')
+            ) : isPrivateFollowing ? (
+              t('Following (private)')
             ) : (
               t('buttonFollowing')
             )}
@@ -85,8 +107,20 @@ export default function FollowButton({ pubkey }: { pubkey: string }) {
       </AlertDialog>
     </div>
   ) : (
-    <Button className="min-w-28 rounded-full" onClick={handleFollow} disabled={updating}>
-      {updating ? <Loader className="animate-spin" /> : t('Follow')}
-    </Button>
+    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+      <Button className="min-w-28 rounded-full" onClick={handleFollow} disabled={updating}>
+        {updating ? <Loader className="animate-spin" /> : t('Follow')}
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="rounded-full text-muted-foreground hover:text-foreground"
+        onClick={handleFollowPrivate}
+        disabled={updating}
+        title={t('Follow privately')}
+      >
+        <EyeOff size={16} />
+      </Button>
+    </div>
   )
 }

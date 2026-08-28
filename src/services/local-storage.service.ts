@@ -1384,7 +1384,36 @@ class LocalStorageService {
 
   setMutedWords(words: string[]) {
     this.mutedWords = words
-    window.localStorage.setItem(StorageKey.MUTED_WORDS, JSON.stringify(this.mutedWords))
+    window.localStorage.setItem(StorageKey.MUTED_WORDS, JSON.stringify(words))
+  }
+
+  // #141: Private follows — a per-pubkey list stored locally only. These are
+  // never published to the public NIP-02 follow list.
+  getPrivateFollows(accountPubkey: string): string[] {
+    const str = window.localStorage.getItem(StorageKey.PRIVATE_FOLLOWS)
+    if (str) {
+      try {
+        const map = JSON.parse(str) as Record<string, string[]>
+        return map[accountPubkey] ?? []
+      } catch {
+        // fall through to empty on malformed data
+      }
+    }
+    return []
+  }
+
+  setPrivateFollows(accountPubkey: string, pubkeys: string[]) {
+    const str = window.localStorage.getItem(StorageKey.PRIVATE_FOLLOWS)
+    let map: Record<string, string[]> = {}
+    if (str) {
+      try {
+        map = JSON.parse(str) as Record<string, string[]>
+      } catch {
+        map = {}
+      }
+    }
+    map[accountPubkey] = pubkeys
+    window.localStorage.setItem(StorageKey.PRIVATE_FOLLOWS, JSON.stringify(map))
   }
 
   getHideIndirectNotifications() {

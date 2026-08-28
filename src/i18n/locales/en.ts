@@ -1154,6 +1154,8 @@ export default {
     'Link previews': 'Link previews',
     'Show previews for links in notes': 'Show previews for links in notes',
     'Hide posts from people I follow': 'Hide posts from people I follow',
-    'Showing posts from people I follow': 'Showing posts from people I follow'
+    'Showing posts from people I follow': 'Showing posts from people I follow',
+    'Follow privately': 'Follow privately',
+    'Following (private)': 'Following (private)'
   }
 }

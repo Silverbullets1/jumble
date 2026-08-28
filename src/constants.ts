@@ -64,6 +64,7 @@ export const StorageKey = {
   MIN_TRUST_SCORE: 'minTrustScore',
   MIN_TRUST_SCORE_MAP: 'minTrustScoreMap',
   HIDE_FOLLOWING_MAP: 'hideFollowingMap',
+  PRIVATE_FOLLOWS: 'privateFollows',
   SEARCH_RELAY_URLS: 'searchRelayUrls',
   SEARCH_HISTORY: 'searchHistory',
   HIDE_INDIRECT_NOTIFICATIONS: 'hideIndirectNotifications',
