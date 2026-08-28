@@ -144,6 +144,33 @@ export function NostrProvider({ children }: { children: React.ReactNode }) {
   const [profileEvent, setProfileEvent] = useState<Event | null>(null)
   const [relayList, setRelayList] = useState<TRelayList | null>(null)
   const [followListEvent, setFollowListEvent] = useState<Event | null>(null)
+
+  // #112: Cross-tab synchronization — when the follow list changes in one
+  // tab, broadcast it so other open tabs update without needing a refresh.
+  const followSyncChannelRef = useRef<BroadcastChannel | null>(null)
+  useEffect(() => {
+    if (typeof BroadcastChannel === 'undefined') return
+    const channel = new BroadcastChannel('jumble-follow-list-sync')
+    followSyncChannelRef.current = channel
+    channel.onmessage = (ev: MessageEvent) => {
+      const payload = ev.data as { pubkey?: string; event?: Event }
+      if (!payload || !payload.pubkey || !payload.event) return
+      // Only apply the event if it belongs to the currently selected account
+      // and is newer than what we have (avoids stale overwrites).
+      if (account && payload.pubkey === account.pubkey) {
+        setFollowListEvent((current) => {
+          if (!current || payload.event!.created_at >= current.created_at) {
+            return payload.event as Event
+          }
+          return current
+        })
+      }
+    }
+    return () => {
+      channel.close()
+      followSyncChannelRef.current = null
+    }
+  }, [account?.pubkey])
   const [muteListEvent, setMuteListEvent] = useState<Event | null>(null)
   const [pinnedUsersEvent, setPinnedUsersEvent] = useState<Event | null>(null)
   const [bookmarkListEvent, setBookmarkListEvent] = useState<Event | null>(null)
@@ -889,6 +916,13 @@ export function NostrProvider({ children }: { children: React.ReactNode }) {
 
     setFollowListEvent(newFollowListEvent)
     await client.updateFollowListCache(newFollowListEvent)
+
+    // #112: Broadcast to other tabs so they see the new follow list
+    // without a manual refresh.
+    followSyncChannelRef.current?.postMessage({
+      pubkey: account?.pubkey,
+      event: newFollowListEvent
+    })
   }
 
   const updateMuteListEvent = async (muteListEvent: Event, privateTags: string[][]) => {
