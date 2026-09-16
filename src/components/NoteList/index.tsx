@@ -110,6 +110,7 @@ const NoteList = forwardRef<
     const [filteredNewEvents, setFilteredNewEvents] = useState<Event[]>([])
     const [refreshCount, setRefreshCount] = useState(0)
     const [reachedTimelineEnd, setReachedTimelineEnd] = useState(false)
+    const [wakeTick, setWakeTick] = useState(0)
     const topRef = useRef<HTMLDivElement | null>(null)
     const eventsRef = useRef(events)
     eventsRef.current = events
@@ -382,10 +383,29 @@ const NoteList = forwardRef<
     }, [JSON.stringify(subRequests), refreshCount, JSON.stringify(showKinds)])
 
     useEffect(() => {
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          setWakeTick((tick) => tick + 1)
+        }
+      }
+      const handleOnline = () => setWakeTick((tick) => tick + 1)
+
+      document.addEventListener('visibilitychange', handleVisibilityChange)
+      window.addEventListener('online', handleOnline)
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
+        window.removeEventListener('online', handleOnline)
+      }
+    }, [])
+
+    useEffect(() => {
       if (!subRequests.length || !active) return
 
       async function init() {
-        setInitialLoading(true)
+        if (!eventsRef.current.length) {
+          setInitialLoading(true)
+        }
+
 
         if (showKinds?.length === 0 && subRequests.every(({ filter }) => !filter.kinds)) {
           return () => {}
@@ -512,7 +532,7 @@ const NoteList = forwardRef<
       return () => {
         promise.then((closer) => closer())
       }
-    }, [JSON.stringify(subRequests), refreshCount, JSON.stringify(showKinds), active])
+    }, [JSON.stringify(subRequests), refreshCount, JSON.stringify(showKinds), active, wakeTick])
 
     const handleLoadMore = useCallback(async () => {
       if (!timelineKey || areAlgoRelays) return false
