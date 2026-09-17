@@ -33,7 +33,7 @@ export default function RelaysFeed() {
   return (
     <NormalFeed
       feedId={feedId}
-      subRequests={[{ urls: relayUrls, filter: {} }]}
+      subRequests={[{ urls: relayUrls, filter: { '#p': [] } }]}
       areAlgoRelays={areAlgoRelays}
       showRelayCloseReason
     />
