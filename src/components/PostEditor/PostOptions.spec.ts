@@ -13,7 +13,9 @@ vi.mock('@/services/local-storage.service', () => ({
   default: {
     getDefaultMinPow: vi.fn(() => 12),
     setDefaultMinPow: vi.fn(),
-    setAddClientTag: vi.fn()
+    setAddClientTag: vi.fn(),
+    getHideFollowingPosts: vi.fn(() => false),
+    setHideFollowingPosts: vi.fn()
   }
 }))
 
@@ -31,7 +33,9 @@ describe('shared post options', () => {
         isNsfw: false,
         setIsNsfw: vi.fn(),
         minPow: 12,
-        setMinPow
+        setMinPow,
+        hideFollowingPosts: false,
+        setHideFollowingPosts: vi.fn()
       })
     )
     vi.mocked(Slider).mock.calls[0][0].onValueChange?.([18])
@@ -57,7 +61,9 @@ describe('shared post options', () => {
         isNsfw: false,
         setIsNsfw: vi.fn(),
         minPow: 0,
-        setMinPow
+        setMinPow,
+        hideFollowingPosts: false,
+        setHideFollowingPosts: vi.fn()
       })
     )
     vi.mocked(Slider).mock.calls[0][0].onValueChange?.([8])
